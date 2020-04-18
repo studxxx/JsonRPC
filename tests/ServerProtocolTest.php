@@ -10,7 +10,7 @@ class C
     }
 }
 
-class ServerProtocolTest extends PHPUnit_Framework_TestCase
+class ServerProtocolTest extends \PHPUnit\Framework\TestCase
 {
     public function testPositionalParameters()
     {

@@ -18,42 +18,34 @@ class B
     }
 }
 
-class ServerProcedureTest extends PHPUnit_Framework_TestCase
+class ServerProcedureTest extends \PHPUnit\Framework\TestCase
 {
-    /**
-     * @expectedException BadFunctionCallException
-     */
     public function testProcedureNotFound()
     {
+        $this->expectException(BadFunctionCallException::class);
         $server = new Server;
         $server->executeProcedure('a');
     }
 
-    /**
-     * @expectedException BadFunctionCallException
-     */
     public function testCallbackNotFound()
     {
+        $this->expectException(BadFunctionCallException::class);
         $server = new Server;
         $server->register('b', function() {});
         $server->executeProcedure('a');
     }
 
-    /**
-     * @expectedException BadFunctionCallException
-     */
     public function testClassNotFound()
     {
+        $this->expectException(BadFunctionCallException::class);
         $server = new Server;
         $server->bind('getAllTasks', 'c', 'getAll');
         $server->executeProcedure('getAllTasks');
     }
 
-    /**
-     * @expectedException BadFunctionCallException
-     */
     public function testMethodNotFound()
     {
+        $this->expectException(BadFunctionCallException::class);
         $server = new Server;
         $server->bind('getAllTasks', 'A', 'getNothing');
         $server->executeProcedure('getAllTasks');
@@ -118,30 +110,25 @@ class ServerProcedureTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(2, $server->executeProcedure('getAllA', array(4, 0, -2)));
     }
 
-    /**
-     * @expectedException InvalidArgumentException
-     */
     public function testTooManyArguments()
     {
+        $this->expectException(InvalidArgumentException::class);
         $server = new Server;
         $server->bind('getAllC', new B, 'getAll');
         $server->executeProcedure('getAllC', array('p1' => 3, 'p2' => 5));
     }
 
-    /**
-     * @expectedException InvalidArgumentException
-     */
     public function testNotEnoughArguments()
     {
+        $this->expectException(InvalidArgumentException::class);
         $server = new Server;
         $server->bind('getAllC', new B, 'getAll');
         $server->executeProcedure('getAllC');
     }
-    /**
-     * @expectedException \JsonRPC\ResponseEncodingFailure
-     */
+
     public function testInvalidResponse()
     {
+        $this->expectException(JsonRPC\ResponseEncodingFailure::class);
         $server = new Server;
         $server->getResponse(array(pack("H*", 'c32e')),array('id'=>1));
     }
