@@ -2,25 +2,17 @@
 
 namespace JsonRPC;
 
-use Exception;
 use BadFunctionCallException;
 use InvalidArgumentException;
 use RuntimeException;
 
 use function json_encode;
 
-/**
- * JsonRPC client class
- *
- * @package JsonRPC
- * @author  Frederic Guillot
- */
 class Client
 {
     /**
      * URL of the server
      *
-     * @access private
      * @var string
      */
     private $url;
@@ -29,7 +21,6 @@ class Client
      * If the only argument passed to a function is an array
      * assume it contains named arguments
      *
-     * @access public
      * @var boolean
      */
     public $named_arguments = true;
@@ -37,7 +28,6 @@ class Client
     /**
      * HTTP client timeout
      *
-     * @access private
      * @var integer
      */
     private $timeout;
@@ -45,7 +35,6 @@ class Client
     /**
      * Username for authentication
      *
-     * @access private
      * @var string
      */
     private $username;
@@ -53,7 +42,6 @@ class Client
     /**
      * Password for authentication
      *
-     * @access private
      * @var string
      */
     private $password;
@@ -61,7 +49,6 @@ class Client
     /**
      * True for a batch request
      *
-     * @access public
      * @var boolean
      */
     public $is_batch = false;
@@ -69,7 +56,6 @@ class Client
     /**
      * Batch payload
      *
-     * @access public
      * @var array
      */
     public $batch = array();
@@ -77,7 +63,6 @@ class Client
     /**
      * Enable debug output to the php error log
      *
-     * @access public
      * @var boolean
      */
     public $debug = false;
@@ -85,7 +70,6 @@ class Client
     /**
      * Default HTTP headers to send to the server
      *
-     * @access private
      * @var array
      */
     private $headers = array(
@@ -98,7 +82,6 @@ class Client
     /**
      * SSL certificates verification
      *
-     * @access public
      * @var boolean
      */
     public $ssl_verify_peer = true;
@@ -106,7 +89,6 @@ class Client
     /**
      * Constructor
      *
-     * @access public
      * @param string $url Server URL
      * @param integer $timeout HTTP timeout
      * @param array $headers Custom HTTP headers
@@ -121,7 +103,6 @@ class Client
     /**
      * Automatic mapping of procedures
      *
-     * @access public
      * @param string $method Procedure name
      * @param array $params Procedure arguments
      * @return mixed
@@ -140,7 +121,6 @@ class Client
     /**
      * Set authentication parameters
      *
-     * @access public
      * @param string $username Username
      * @param string $password Password
      * @return Client
@@ -156,7 +136,6 @@ class Client
     /**
      * Start a batch request
      *
-     * @access public
      * @return Client
      */
     public function batch()
@@ -170,7 +149,6 @@ class Client
     /**
      * Send a batch request
      *
-     * @access public
      * @return array
      * @throws ConnectionFailureException
      */
@@ -186,7 +164,6 @@ class Client
     /**
      * Execute a procedure
      *
-     * @access public
      * @param string $procedure Procedure name
      * @param array $params Procedure arguments
      * @return mixed
@@ -207,7 +184,6 @@ class Client
     /**
      * Prepare the payload
      *
-     * @access public
      * @param string $procedure Procedure name
      * @param array $params Procedure arguments
      * @return array
@@ -230,7 +206,6 @@ class Client
     /**
      * Parse the response and return the procedure result
      *
-     * @access public
      * @param array $payload
      * @return mixed
      */
@@ -252,7 +227,6 @@ class Client
     /**
      * Throw an exception according the RPC error
      *
-     * @access public
      * @param array $error
      * @throws BadFunctionCallException
      * @throws InvalidArgumentException
@@ -283,7 +257,6 @@ class Client
     /**
      * Throw an exception according the HTTP response
      *
-     * @access public
      * @param array $headers
      * @throws AccessDeniedException
      * @throws ServerErrorException
@@ -309,9 +282,11 @@ class Client
     /**
      * Do the HTTP request
      *
-     * @access private
      * @param array $payload
      * @return array
+     * @throws AccessDeniedException
+     * @throws ConnectionFailureException
+     * @throws ServerErrorException
      */
     private function doRequest(array $payload)
     {
@@ -337,7 +312,6 @@ class Client
     /**
      * Prepare stream context
      *
-     * @access private
      * @param array $payload
      * @return resource
      */
@@ -371,7 +345,6 @@ class Client
     /**
      * Return true if we have a batch response
      *
-     * @access public
      * @param array $payload
      * @return boolean
      */
@@ -383,9 +356,9 @@ class Client
     /**
      * Get a RPC call result
      *
-     * @access private
      * @param array $payload
      * @return mixed
+     * @throws ResponseException
      */
     private function getResult(array $payload)
     {

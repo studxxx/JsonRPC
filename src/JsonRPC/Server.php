@@ -9,18 +9,11 @@ use InvalidArgumentException;
 use ReflectionFunction;
 use ReflectionMethod;
 
-/**
- * JsonRPC server class
- *
- * @package JsonRPC
- * @author  Frederic Guillot
- */
 class Server
 {
     /**
      * Data received from the client
      *
-     * @access private
      * @var array
      */
     private $payload = array();
@@ -28,7 +21,6 @@ class Server
     /**
      * List of procedures
      *
-     * @access private
      * @var array
      */
     private $callbacks = array();
@@ -36,7 +28,6 @@ class Server
     /**
      * List of classes
      *
-     * @access private
      * @var array
      */
     private $classes = array();
@@ -44,7 +35,6 @@ class Server
     /**
      * List of instances
      *
-     * @access private
      * @var array
      */
     private $instances = array();
@@ -52,7 +42,6 @@ class Server
     /**
      * List of exception classes that should be relayed to client
      *
-     * @access private
      * @var array
      */
     private $exceptions = array();
@@ -60,7 +49,6 @@ class Server
     /**
      * Method name to execute before the procedure
      *
-     * @access private
      * @var string
      */
     private $before = '';
@@ -68,7 +56,6 @@ class Server
     /**
      * Username
      *
-     * @access private
      * @var string
      */
     private $username = '';
@@ -76,7 +63,6 @@ class Server
     /**
      * Password
      *
-     * @access private
      * @var string
      */
     private $password = '';
@@ -84,7 +70,6 @@ class Server
     /**
      * Constructor
      *
-     * @access public
      * @param string $request
      */
     public function __construct($request = '')
@@ -99,19 +84,18 @@ class Server
     /**
      * Set a payload
      *
-     * @access public
      * @param array $payload
      * @return Server
      */
     public function setPayload(array $payload)
     {
         $this->payload = $payload;
+        return $this;
     }
 
     /**
      * Define alternative authentication header
      *
-     * @access public
      * @param string $header Header name
      * @return Server
      */
@@ -131,7 +115,6 @@ class Server
     /**
      * Get username
      *
-     * @access public
      * @return string
      */
     public function getUsername()
@@ -142,7 +125,6 @@ class Server
     /**
      * Get password
      *
-     * @access public
      * @return string
      */
     public function getPassword()
@@ -152,8 +134,6 @@ class Server
 
     /**
      * Send authentication failure response
-     *
-     * @access public
      */
     public function sendAuthenticationFailureResponse()
     {
@@ -166,8 +146,6 @@ class Server
 
     /**
      * Send forbidden response
-     *
-     * @access public
      */
     public function sendForbiddenResponse()
     {
@@ -182,7 +160,6 @@ class Server
      *
      * Return an HTTP error 403 if the client is not allowed
      *
-     * @access public
      * @param array $hosts List of hosts
      */
     public function allowHosts(array $hosts)
@@ -197,7 +174,6 @@ class Server
      *
      * Return an HTTP error 401 if the client is not allowed
      *
-     * @access public
      * @param array $users Map of username/password
      * @return Server
      */
@@ -213,7 +189,6 @@ class Server
     /**
      * Register a new procedure
      *
-     * @access public
      * @param string $procedure Procedure name
      * @param closure $callback Callback
      * @return Server
@@ -227,7 +202,6 @@ class Server
     /**
      * Bind a procedure to a class
      *
-     * @access public
      * @param string $procedure Procedure name
      * @param mixed $class Class name or instance
      * @param string $method Procedure name
@@ -246,7 +220,6 @@ class Server
     /**
      * Bind a class instance
      *
-     * @access public
      * @param mixed $instance Instance name
      * @return Server
      */
@@ -260,7 +233,6 @@ class Server
      * Bind an exception
      * If this exception occurs it is relayed to the client as JSON-RPC error
      *
-     * @access public
      * @param mixed $exception Exception class. Defaults to all.
      * @return Server
      */
@@ -273,7 +245,6 @@ class Server
     /**
      * Attach a method that will be called before the procedure
      *
-     * @access public
      * @param string $before
      * @return Server
      */
@@ -286,7 +257,6 @@ class Server
     /**
      * Return the response to the client
      *
-     * @access public
      * @param array $data Data to send to the client
      * @param array $payload Incoming data
      * @return string
@@ -369,7 +339,6 @@ class Server
     /**
      * Return true if we have a batch request
      *
-     * @access public
      * @return boolean
      */
     private function isBatchRequest()
@@ -382,6 +351,7 @@ class Server
      *
      * @access private
      * @return string
+     * @throws ResponseEncodingFailure
      */
     private function handleBatchRequest()
     {
@@ -415,8 +385,8 @@ class Server
     /**
      * Parse incoming requests
      *
-     * @access public
      * @return string
+     * @throws ResponseEncodingFailure
      */
     public function execute()
     {
@@ -523,10 +493,10 @@ class Server
     /**
      * Execute the procedure
      *
-     * @access public
      * @param string $procedure Procedure name
      * @param array $params Procedure params
      * @return mixed
+     * @throws \ReflectionException
      */
     public function executeProcedure($procedure, array $params = array())
     {
@@ -553,10 +523,10 @@ class Server
     /**
      * Execute a callback
      *
-     * @access public
      * @param Closure $callback Callback
      * @param array $params Procedure params
      * @return mixed
+     * @throws \ReflectionException
      */
     public function executeCallback(Closure $callback, $params)
     {
@@ -575,11 +545,11 @@ class Server
     /**
      * Execute a method
      *
-     * @access public
      * @param mixed $class Class name or instance
      * @param string $method Method name
      * @param array $params Procedure params
      * @return mixed
+     * @throws \ReflectionException
      */
     public function executeMethod($class, $method, $params)
     {
@@ -614,7 +584,6 @@ class Server
     /**
      * Get procedure arguments
      *
-     * @access public
      * @param array $request_params Incoming arguments
      * @param array $method_params Procedure arguments
      * @param integer $nb_required_params Number of required parameters
@@ -643,7 +612,6 @@ class Server
     /**
      * Return true if we have positional parametes
      *
-     * @access public
      * @param array $request_params Incoming arguments
      * @param array $method_params Procedure arguments
      * @return bool
@@ -656,7 +624,6 @@ class Server
     /**
      * Get named arguments
      *
-     * @access public
      * @param array $request_params Incoming arguments
      * @param array $method_params Procedure arguments
      * @return array
