@@ -40,9 +40,9 @@ class ResponseException extends Exception
      *
      * @access public
      * @param mixed $data [optional] A value that contains additional information about the error.
-     * @return \JsonRPC\ResponseException
+     * @return ResponseException
      */
-    public function setData($data = null)
+    public function setData($data = null): self
     {
         $this->data = $data;
         return $this;

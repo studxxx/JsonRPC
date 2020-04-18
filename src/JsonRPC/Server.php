@@ -6,6 +6,7 @@ use Closure;
 use BadFunctionCallException;
 use Exception;
 use InvalidArgumentException;
+use ReflectionException;
 use ReflectionFunction;
 use ReflectionMethod;
 
@@ -16,35 +17,35 @@ class Server
      *
      * @var array
      */
-    private $payload = array();
+    private $payload = [];
 
     /**
      * List of procedures
      *
      * @var array
      */
-    private $callbacks = array();
+    private $callbacks = [];
 
     /**
      * List of classes
      *
      * @var array
      */
-    private $classes = array();
+    private $classes = [];
 
     /**
      * List of instances
      *
      * @var array
      */
-    private $instances = array();
+    private $instances = [];
 
     /**
      * List of exception classes that should be relayed to client
      *
      * @var array
      */
-    private $exceptions = array();
+    private $exceptions = [];
 
     /**
      * Method name to execute before the procedure
@@ -72,13 +73,9 @@ class Server
      *
      * @param string $request
      */
-    public function __construct($request = '')
+    public function __construct(?string $request = null)
     {
-        if ($request !== '') {
-            $this->payload = json_decode($request, true);
-        } else {
-            $this->payload = json_decode(file_get_contents('php://input'), true);
-        }
+        $this->payload = json_decode($request ?? file_get_contents('php://input'), true);
     }
 
     /**
@@ -87,7 +84,7 @@ class Server
      * @param array $payload
      * @return Server
      */
-    public function setPayload(array $payload)
+    public function setPayload(array $payload): self
     {
         $this->payload = $payload;
         return $this;
@@ -99,13 +96,13 @@ class Server
      * @param string $header Header name
      * @return Server
      */
-    public function setAuthenticationHeader($header)
+    public function setAuthenticationHeader($header): self
     {
         if (!empty($header)) {
             $header = 'HTTP_' . str_replace('-', '_', strtoupper($header));
 
             if (isset($_SERVER[$header])) {
-                list($this->username, $this->password) = explode(':', @base64_decode($_SERVER[$header]));
+                [$this->username, $this->password] = explode(':', @base64_decode($_SERVER[$header]));
             }
         }
 
@@ -117,7 +114,7 @@ class Server
      *
      * @return string
      */
-    public function getUsername()
+    public function getUsername(): ?string
     {
         return $this->username ?: @$_SERVER['PHP_AUTH_USER'];
     }
@@ -127,7 +124,7 @@ class Server
      *
      * @return string
      */
-    public function getPassword()
+    public function getPassword(): ?string
     {
         return $this->password ?: @$_SERVER['PHP_AUTH_PW'];
     }
@@ -135,7 +132,7 @@ class Server
     /**
      * Send authentication failure response
      */
-    public function sendAuthenticationFailureResponse()
+    public function sendAuthenticationFailureResponse(): void
     {
         header('WWW-Authenticate: Basic realm="JsonRPC"');
         header('Content-Type: application/json');
@@ -147,7 +144,7 @@ class Server
     /**
      * Send forbidden response
      */
-    public function sendForbiddenResponse()
+    public function sendForbiddenResponse(): void
     {
         header('Content-Type: application/json');
         header('HTTP/1.0 403 Forbidden');
@@ -157,27 +154,25 @@ class Server
 
     /**
      * IP based client restrictions
-     *
      * Return an HTTP error 403 if the client is not allowed
      *
      * @param array $hosts List of hosts
      */
-    public function allowHosts(array $hosts)
+    public function allowHosts(array $hosts): void
     {
-        if (!in_array($_SERVER['REMOTE_ADDR'], $hosts)) {
+        if (!in_array($_SERVER['REMOTE_ADDR'], $hosts, true)) {
             $this->sendForbiddenResponse();
         }
     }
 
     /**
      * HTTP Basic authentication
-     *
      * Return an HTTP error 401 if the client is not allowed
      *
      * @param array $users Map of username/password
      * @return Server
      */
-    public function authentication(array $users)
+    public function authentication(array $users): self
     {
         if (!isset($users[$this->getUsername()]) || $users[$this->getUsername()] !== $this->getPassword()) {
             $this->sendAuthenticationFailureResponse();
@@ -193,7 +188,7 @@ class Server
      * @param closure $callback Callback
      * @return Server
      */
-    public function register($procedure, Closure $callback)
+    public function register($procedure, Closure $callback): self
     {
         $this->callbacks[$procedure] = $callback;
         return $this;
@@ -207,13 +202,13 @@ class Server
      * @param string $method Procedure name
      * @return Server
      */
-    public function bind($procedure, $class, $method = '')
+    public function bind($procedure, $class, $method = ''): self
     {
         if ($method === '') {
             $method = $procedure;
         }
 
-        $this->classes[$procedure] = array($class, $method);
+        $this->classes[$procedure] = [$class, $method];
         return $this;
     }
 
@@ -223,7 +218,7 @@ class Server
      * @param mixed $instance Instance name
      * @return Server
      */
-    public function attach($instance)
+    public function attach($instance): self
     {
         $this->instances[] = $instance;
         return $this;
@@ -236,7 +231,7 @@ class Server
      * @param mixed $exception Exception class. Defaults to all.
      * @return Server
      */
-    public function attachException($exception = 'Exception')
+    public function attachException($exception = 'Exception'): self
     {
         $this->exceptions[] = $exception;
         return $this;
@@ -248,7 +243,7 @@ class Server
      * @param string $before
      * @return Server
      */
-    public function before($before)
+    public function before($before): self
     {
         $this->before = $before;
         return $this;
@@ -262,7 +257,7 @@ class Server
      * @return string
      * @throws ResponseEncodingFailure
      */
-    public function getResponse(array $data, array $payload = array())
+    public function getResponse(array $data, array $payload = []): string
     {
         if (!array_key_exists('id', $payload)) {
             return '';
@@ -311,9 +306,9 @@ class Server
     /**
      * Parse the payload and test if the parsed JSON is ok
      *
-     * @access private
+     * @throws InvalidJsonFormat
      */
-    private function checkJsonFormat()
+    private function checkJsonFormat(): void
     {
         if (!is_array($this->payload)) {
             throw new InvalidJsonFormat('Malformed payload');
@@ -323,15 +318,16 @@ class Server
     /**
      * Test if all required JSON-RPC parameters are here
      *
-     * @access private
+     * @throws InvalidJsonRpcFormat
      */
-    private function checkRpcFormat()
+    private function checkRpcFormat(): void
     {
         if (!isset($this->payload['jsonrpc']) ||
             !isset($this->payload['method']) ||
             !is_string($this->payload['method']) ||
             $this->payload['jsonrpc'] !== '2.0' ||
-            (isset($this->payload['params']) && !is_array($this->payload['params']))) {
+            (isset($this->payload['params']) && !is_array($this->payload['params']))
+        ) {
             throw new InvalidJsonRpcFormat('Invalid JSON RPC payload');
         }
     }
@@ -341,7 +337,7 @@ class Server
      *
      * @return boolean
      */
-    private function isBatchRequest()
+    private function isBatchRequest(): bool
     {
         return array_keys($this->payload) === range(0, count($this->payload) - 1);
     }
@@ -349,24 +345,23 @@ class Server
     /**
      * Handle batch request
      *
-     * @access private
      * @return string
      * @throws ResponseEncodingFailure
      */
-    private function handleBatchRequest()
+    private function handleBatchRequest(): string
     {
-        $responses = array();
+        $responses = [];
 
         foreach ($this->payload as $payload) {
             if (!is_array($payload)) {
                 $responses[] = $this->getResponse(
-                    array(
-                        'error' => array(
+                    [
+                        'error' => [
                             'code' => -32600,
                             'message' => 'Invalid Request'
-                        )
-                    ),
-                    array('id' => null)
+                        ]
+                    ],
+                    ['id' => null]
                 );
             } else {
                 $server = clone($this);
@@ -387,8 +382,9 @@ class Server
      *
      * @return string
      * @throws ResponseEncodingFailure
+     * @throws Exception
      */
-    public function execute()
+    public function execute(): string
     {
         try {
             $this->checkJsonFormat();
@@ -401,59 +397,59 @@ class Server
 
             $result = $this->executeProcedure(
                 $this->payload['method'],
-                empty($this->payload['params']) ? array() : $this->payload['params']
+                empty($this->payload['params']) ? [] : $this->payload['params']
             );
 
-            return $this->getResponse(array('result' => $result), $this->payload);
+            return $this->getResponse(['result' => $result], $this->payload);
         } catch (InvalidJsonFormat $e) {
             return $this->getResponse(
-                array(
-                    'error' => array(
+                [
+                    'error' => [
                         'code' => -32700,
                         'message' => 'Parse error'
-                    )
-                ),
-                array('id' => null)
+                    ]
+                ],
+                ['id' => null]
             );
         } catch (InvalidJsonRpcFormat $e) {
             return $this->getResponse(
-                array(
-                    'error' => array(
+                [
+                    'error' => [
                         'code' => -32600,
                         'message' => 'Invalid Request'
-                    )
-                ),
-                array('id' => null)
+                    ]
+                ],
+                ['id' => null]
             );
         } catch (BadFunctionCallException $e) {
             return $this->getResponse(
-                array(
-                    'error' => array(
+                [
+                    'error' => [
                         'code' => -32601,
                         'message' => 'Method not found'
-                    )
-                ),
+                    ]
+                ],
                 $this->payload
             );
         } catch (InvalidArgumentException $e) {
             return $this->getResponse(
-                array(
-                    'error' => array(
+                [
+                    'error' => [
                         'code' => -32602,
                         'message' => 'Invalid params'
-                    )
-                ),
+                    ]
+                ],
                 $this->payload
             );
         } catch (ResponseEncodingFailure $e) {
             return $this->getResponse(
-                array(
-                    'error' => array(
+                [
+                    'error' => [
                         'code' => -32603,
                         'message' => 'Internal error',
                         'data' => $e->getMessage()
-                    )
-                ),
+                    ]
+                ],
                 $this->payload
             );
         } catch (AuthenticationFailure $e) {
@@ -462,30 +458,29 @@ class Server
             $this->sendForbiddenResponse();
         } catch (ResponseException $e) {
             return $this->getResponse(
-                array(
-                    'error' => array(
+                [
+                    'error' => [
                         'code' => $e->getCode(),
                         'message' => $e->getMessage(),
                         'data' => $e->getData(),
-                    )
-                ),
+                    ]
+                ],
                 $this->payload
             );
         } catch (Exception $e) {
             foreach ($this->exceptions as $class) {
                 if ($e instanceof $class) {
                     return $this->getResponse(
-                        array(
-                            'error' => array(
+                        [
+                            'error' => [
                                 'code' => $e->getCode(),
                                 'message' => $e->getMessage()
-                            )
-                        ),
+                            ]
+                        ],
                         $this->payload
                     );
                 }
             }
-
             throw $e;
         }
     }
@@ -496,19 +491,19 @@ class Server
      * @param string $procedure Procedure name
      * @param array $params Procedure params
      * @return mixed
-     * @throws \ReflectionException
+     * @throws ReflectionException
      */
-    public function executeProcedure($procedure, array $params = array())
+    public function executeProcedure($procedure, array $params = [])
     {
         if (isset($this->callbacks[$procedure])) {
             return $this->executeCallback($this->callbacks[$procedure], $params);
-        } else {
-            if (isset($this->classes[$procedure]) && method_exists(
-                    $this->classes[$procedure][0],
-                    $this->classes[$procedure][1]
-                )) {
-                return $this->executeMethod($this->classes[$procedure][0], $this->classes[$procedure][1], $params);
-            }
+        }
+
+        if (isset($this->classes[$procedure]) && method_exists(
+                $this->classes[$procedure][0],
+                $this->classes[$procedure][1]
+            )) {
+            return $this->executeMethod($this->classes[$procedure][0], $this->classes[$procedure][1], $params);
         }
 
         foreach ($this->instances as $instance) {
@@ -526,7 +521,7 @@ class Server
      * @param Closure $callback Callback
      * @param array $params Procedure params
      * @return mixed
-     * @throws \ReflectionException
+     * @throws ReflectionException
      */
     public function executeCallback(Closure $callback, $params)
     {
@@ -549,7 +544,7 @@ class Server
      * @param string $method Method name
      * @param array $params Procedure params
      * @return mixed
-     * @throws \ReflectionException
+     * @throws ReflectionException
      */
     public function executeMethod($class, $method, $params)
     {
@@ -558,14 +553,9 @@ class Server
         // Execute before action
         if (!empty($this->before)) {
             if (is_callable($this->before)) {
-                call_user_func_array(
-                    $this->before,
-                    array($this->getUsername(), $this->getPassword(), get_class($class), $method)
-                );
-            } else {
-                if (method_exists($instance, $this->before)) {
-                    $instance->{$this->before}($this->getUsername(), $this->getPassword(), get_class($class), $method);
-                }
+                call_user_func($this->before, $this->getUsername(), $this->getPassword(), get_class($class), $method);
+            } elseif (method_exists($instance, $this->before)) {
+                $instance->{$this->before}($this->getUsername(), $this->getPassword(), get_class($class), $method);
             }
         }
 
@@ -590,7 +580,7 @@ class Server
      * @param integer $nb_max_params Maximum number of parameters
      * @return array
      */
-    public function getArguments(array $request_params, array $method_params, $nb_required_params, $nb_max_params)
+    public function getArguments(array $request_params, array $method_params, $nb_required_params, $nb_max_params): array
     {
         $nb_params = count($request_params);
 
@@ -616,7 +606,7 @@ class Server
      * @param array $method_params Procedure arguments
      * @return bool
      */
-    public function isPositionalArguments(array $request_params, array $method_params)
+    public function isPositionalArguments(array $request_params, array $method_params): bool
     {
         return array_keys($request_params) === range(0, count($request_params) - 1);
     }
@@ -628,21 +618,19 @@ class Server
      * @param array $method_params Procedure arguments
      * @return array
      */
-    public function getNamedArguments(array $request_params, array $method_params)
+    public function getNamedArguments(array $request_params, array $method_params): array
     {
-        $params = array();
+        $params = [];
 
         foreach ($method_params as $p) {
             $name = $p->getName();
 
             if (isset($request_params[$name])) {
                 $params[$name] = $request_params[$name];
+            } elseif ($p->isDefaultValueAvailable()) {
+                $params[$name] = $p->getDefaultValue();
             } else {
-                if ($p->isDefaultValueAvailable()) {
-                    $params[$name] = $p->getDefaultValue();
-                } else {
-                    throw new InvalidArgumentException('Missing argument: ' . $name);
-                }
+                throw new InvalidArgumentException('Missing argument: ' . $name);
             }
         }
 

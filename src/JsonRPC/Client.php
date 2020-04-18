@@ -58,7 +58,7 @@ class Client
      *
      * @var array
      */
-    public $batch = array();
+    public $batch = [];
 
     /**
      * Enable debug output to the php error log
@@ -72,12 +72,12 @@ class Client
      *
      * @var array
      */
-    private $headers = array(
+    private $headers = [
         'User-Agent: JSON-RPC PHP Client <https://github.com/fguillot/JsonRPC>',
         'Content-Type: application/json',
         'Accept: application/json',
         'Connection: close',
-    );
+    ];
 
     /**
      * SSL certificates verification
@@ -93,7 +93,7 @@ class Client
      * @param integer $timeout HTTP timeout
      * @param array $headers Custom HTTP headers
      */
-    public function __construct($url, $timeout = 3, $headers = array())
+    public function __construct($url, $timeout = 3, $headers = [])
     {
         $this->url = $url;
         $this->timeout = $timeout;
@@ -107,6 +107,7 @@ class Client
      * @param array $params Procedure arguments
      * @return mixed
      * @throws ConnectionFailureException
+     * @throws ResponseException
      */
     public function __call($method, array $params)
     {
@@ -125,7 +126,7 @@ class Client
      * @param string $password Password
      * @return Client
      */
-    public function authentication($username, $password)
+    public function authentication($username, $password): self
     {
         $this->username = $username;
         $this->password = $password;
@@ -138,10 +139,10 @@ class Client
      *
      * @return Client
      */
-    public function batch()
+    public function batch(): self
     {
         $this->is_batch = true;
-        $this->batch = array();
+        $this->batch = [];
 
         return $this;
     }
@@ -151,8 +152,9 @@ class Client
      *
      * @return array
      * @throws ConnectionFailureException
+     * @throws ResponseException
      */
-    public function send()
+    public function send(): array
     {
         $this->is_batch = false;
 
@@ -168,6 +170,7 @@ class Client
      * @param array $params Procedure arguments
      * @return mixed
      * @throws ConnectionFailureException
+     * @throws ResponseException
      */
     public function execute($procedure, array $params = array())
     {
@@ -188,13 +191,13 @@ class Client
      * @param array $params Procedure arguments
      * @return array
      */
-    public function prepareRequest($procedure, array $params = array())
+    public function prepareRequest($procedure, array $params = array()): array
     {
-        $payload = array(
+        $payload = [
             'jsonrpc' => '2.0',
             'method' => $procedure,
             'id' => mt_rand()
-        );
+        ];
 
         if (!empty($params)) {
             $payload['params'] = $params;
@@ -208,11 +211,12 @@ class Client
      *
      * @param array $payload
      * @return mixed
+     * @throws ResponseException
      */
     public function parseResponse(array $payload)
     {
         if ($this->isBatchResponse($payload)) {
-            $results = array();
+            $results = [];
 
             foreach ($payload as $response) {
                 $results[] = $this->getResult($response);
@@ -233,7 +237,7 @@ class Client
      * @throws RuntimeException
      * @throws ResponseException
      */
-    public function handleRpcErrors(array $error)
+    public function handleRpcErrors(array $error): void
     {
         switch ($error['code']) {
             case -32700:
@@ -258,17 +262,15 @@ class Client
      * Throw an exception according the HTTP response
      *
      * @param array $headers
-     * @throws AccessDeniedException
-     * @throws ServerErrorException
      */
-    public function handleHttpErrors(array $headers)
+    public function handleHttpErrors(array $headers): void
     {
-        $exceptions = array(
-            '401' => 'JsonRPC\AccessDeniedException',
-            '403' => 'JsonRPC\AccessDeniedException',
-            '404' => 'JsonRPC\ConnectionFailureException',
-            '500' => 'JsonRPC\ServerErrorException',
-        );
+        $exceptions = [
+            401 => AccessDeniedException::class,
+            403 => AccessDeniedException::class,
+            404 => ConnectionFailureException::class,
+            500 => ServerErrorException::class,
+        ];
 
         foreach ($headers as $header) {
             foreach ($exceptions as $code => $exception) {
@@ -284,11 +286,9 @@ class Client
      *
      * @param array $payload
      * @return array
-     * @throws AccessDeniedException
      * @throws ConnectionFailureException
-     * @throws ServerErrorException
      */
-    private function doRequest(array $payload)
+    private function doRequest(array $payload): array
     {
         $stream = @fopen(trim($this->url), 'r', false, $this->getContext($payload));
 
@@ -306,7 +306,7 @@ class Client
             error_log('==> Response: ' . PHP_EOL . json_encode($response, JSON_PRETTY_PRINT));
         }
 
-        return is_array($response) ? $response : array();
+        return is_array($response) ? $response : [];
     }
 
     /**
@@ -324,8 +324,8 @@ class Client
         }
 
         return stream_context_create(
-            array(
-                'http' => array(
+            [
+                'http' => [
                     'method' => 'POST',
                     'protocol_version' => 1.1,
                     'timeout' => $this->timeout,
@@ -333,12 +333,12 @@ class Client
                     'header' => implode("\r\n", $headers),
                     'content' => json_encode($payload),
                     'ignore_errors' => true,
-                ),
-                "ssl" => array(
-                    "verify_peer" => $this->ssl_verify_peer,
-                    "verify_peer_name" => $this->ssl_verify_peer,
-                )
-            )
+                ],
+                'ssl' => [
+                    'verify_peer' => $this->ssl_verify_peer,
+                    'verify_peer_name' => $this->ssl_verify_peer,
+                ]
+            ]
         );
     }
 
@@ -348,7 +348,7 @@ class Client
      * @param array $payload
      * @return boolean
      */
-    private function isBatchResponse(array $payload)
+    private function isBatchResponse(array $payload): bool
     {
         return array_keys($payload) === range(0, count($payload) - 1);
     }
