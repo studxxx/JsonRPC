@@ -46,12 +46,12 @@ $server = new Server;
 
 // Procedures registration
 
-$server->register('addition', function ($a, $b) {
+$server->register('addition', static function ($a, $b) {
     return $a + $b;
 });
 
-$server->register('random', function ($start, $end) {
-    return mt_rand($start, $end);
+$server->register('random', static function ($start, $end) {
+    return random_int($start, $end);
 });
 
 // Return the response to the client
@@ -69,7 +69,7 @@ use JsonRPC\Server;
 
 class Api
 {
-    public function doSomething($arg1, $arg2 = 3)
+    public function doSomething($arg1, $arg2 = 3): int
     {
         return $arg1 + $arg2;
     }

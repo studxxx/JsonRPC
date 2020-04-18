@@ -17,7 +17,7 @@ class Server
      *
      * @var array
      */
-    private $payload = [];
+    private $payload;
 
     /**
      * List of procedures
@@ -263,10 +263,10 @@ class Server
             return '';
         }
 
-        $response = array(
+        $response = [
             'jsonrpc' => '2.0',
             'id' => $payload['id']
-        );
+        ];
 
         $response = array_merge($response, $data);
 
@@ -580,8 +580,12 @@ class Server
      * @param integer $nb_max_params Maximum number of parameters
      * @return array
      */
-    public function getArguments(array $request_params, array $method_params, $nb_required_params, $nb_max_params): array
-    {
+    public function getArguments(
+        array $request_params,
+        array $method_params,
+        $nb_required_params,
+        $nb_max_params
+    ): array {
         $nb_params = count($request_params);
 
         if ($nb_params < $nb_required_params) {
