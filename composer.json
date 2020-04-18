@@ -10,9 +10,12 @@
         }
     ],
     "require": {
-        "php": ">=5.3.4"
+        "php": ">=7.0",
+        "ext-json": "*"
     },
     "autoload": {
-        "psr-0": {"JsonRPC": "src/"}
+        "psr-4": {
+            "JsonRPC\\": "src/JsonRPC/"
+        }
     }
 }

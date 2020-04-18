@@ -7,8 +7,7 @@ use BadFunctionCallException;
 use InvalidArgumentException;
 use RuntimeException;
 
-class ConnectionFailureException extends Exception {};
-class ServerErrorException extends Exception {};
+use function json_encode;
 
 /**
  * JsonRPC client class
@@ -108,9 +107,9 @@ class Client
      * Constructor
      *
      * @access public
-     * @param  string    $url         Server URL
-     * @param  integer   $timeout     HTTP timeout
-     * @param  array     $headers     Custom HTTP headers
+     * @param string $url Server URL
+     * @param integer $timeout HTTP timeout
+     * @param array $headers Custom HTTP headers
      */
     public function __construct($url, $timeout = 3, $headers = array())
     {
@@ -123,9 +122,10 @@ class Client
      * Automatic mapping of procedures
      *
      * @access public
-     * @param  string   $method   Procedure name
-     * @param  array    $params   Procedure arguments
+     * @param string $method Procedure name
+     * @param array $params Procedure arguments
      * @return mixed
+     * @throws ConnectionFailureException
      */
     public function __call($method, array $params)
     {
@@ -141,8 +141,8 @@ class Client
      * Set authentication parameters
      *
      * @access public
-     * @param  string   $username   Username
-     * @param  string   $password   Password
+     * @param string $username Username
+     * @param string $password Password
      * @return Client
      */
     public function authentication($username, $password)
@@ -172,6 +172,7 @@ class Client
      *
      * @access public
      * @return array
+     * @throws ConnectionFailureException
      */
     public function send()
     {
@@ -186,9 +187,10 @@ class Client
      * Execute a procedure
      *
      * @access public
-     * @param  string   $procedure   Procedure name
-     * @param  array    $params      Procedure arguments
+     * @param string $procedure Procedure name
+     * @param array $params Procedure arguments
      * @return mixed
+     * @throws ConnectionFailureException
      */
     public function execute($procedure, array $params = array())
     {
@@ -206,8 +208,8 @@ class Client
      * Prepare the payload
      *
      * @access public
-     * @param  string   $procedure   Procedure name
-     * @param  array    $params      Procedure arguments
+     * @param string $procedure Procedure name
+     * @param array $params Procedure arguments
      * @return array
      */
     public function prepareRequest($procedure, array $params = array())
@@ -218,7 +220,7 @@ class Client
             'id' => mt_rand()
         );
 
-        if (! empty($params)) {
+        if (!empty($params)) {
             $payload['params'] = $params;
         }
 
@@ -229,7 +231,7 @@ class Client
      * Parse the response and return the procedure result
      *
      * @access public
-     * @param  array     $payload
+     * @param array $payload
      * @return mixed
      */
     public function parseResponse(array $payload)
@@ -251,7 +253,7 @@ class Client
      * Throw an exception according the RPC error
      *
      * @access public
-     * @param  array   $error
+     * @param array $error
      * @throws BadFunctionCallException
      * @throws InvalidArgumentException
      * @throws RuntimeException
@@ -261,13 +263,13 @@ class Client
     {
         switch ($error['code']) {
             case -32700:
-                throw new RuntimeException('Parse error: '. $error['message']);
+                throw new RuntimeException('Parse error: ' . $error['message']);
             case -32600:
-                throw new RuntimeException('Invalid Request: '. $error['message']);
+                throw new RuntimeException('Invalid Request: ' . $error['message']);
             case -32601:
-                throw new BadFunctionCallException('Procedure not found: '. $error['message']);
+                throw new BadFunctionCallException('Procedure not found: ' . $error['message']);
             case -32602:
-                throw new InvalidArgumentException('Invalid arguments: '. $error['message']);
+                throw new InvalidArgumentException('Invalid arguments: ' . $error['message']);
             default:
                 throw new ResponseException(
                     $error['message'],
@@ -282,7 +284,7 @@ class Client
      * Throw an exception according the HTTP response
      *
      * @access public
-     * @param  array   $headers
+     * @param array $headers
      * @throws AccessDeniedException
      * @throws ServerErrorException
      */
@@ -297,8 +299,8 @@ class Client
 
         foreach ($headers as $header) {
             foreach ($exceptions as $code => $exception) {
-                if (strpos($header, 'HTTP/1.0 '.$code) !== false || strpos($header, 'HTTP/1.1 '.$code) !== false) {
-                    throw new $exception('Response: '.$header);
+                if (strpos($header, 'HTTP/1.0 ' . $code) !== false || strpos($header, 'HTTP/1.1 ' . $code) !== false) {
+                    throw new $exception('Response: ' . $header);
                 }
             }
         }
@@ -308,14 +310,14 @@ class Client
      * Do the HTTP request
      *
      * @access private
-     * @param  array   $payload
+     * @param array $payload
      * @return array
      */
     private function doRequest(array $payload)
     {
         $stream = @fopen(trim($this->url), 'r', false, $this->getContext($payload));
 
-        if (! is_resource($stream)) {
+        if (!is_resource($stream)) {
             throw new ConnectionFailureException('Unable to establish a connection');
         }
 
@@ -325,8 +327,8 @@ class Client
         $response = json_decode(stream_get_contents($stream), true);
 
         if ($this->debug) {
-            error_log('==> Request: '.PHP_EOL.json_encode($payload, JSON_PRETTY_PRINT));
-            error_log('==> Response: '.PHP_EOL.json_encode($response, JSON_PRETTY_PRINT));
+            error_log('==> Request: ' . PHP_EOL . json_encode($payload, JSON_PRETTY_PRINT));
+            error_log('==> Response: ' . PHP_EOL . json_encode($response, JSON_PRETTY_PRINT));
         }
 
         return is_array($response) ? $response : array();
@@ -336,39 +338,41 @@ class Client
      * Prepare stream context
      *
      * @access private
-     * @param  array   $payload
+     * @param array $payload
      * @return resource
      */
     private function getContext(array $payload)
     {
         $headers = $this->headers;
 
-        if (! empty($this->username) && ! empty($this->password)) {
-            $headers[] = 'Authorization: Basic '.base64_encode($this->username.':'.$this->password);
+        if (!empty($this->username) && !empty($this->password)) {
+            $headers[] = 'Authorization: Basic ' . base64_encode($this->username . ':' . $this->password);
         }
 
-        return stream_context_create(array(
-            'http' => array(
-                'method' => 'POST',
-                'protocol_version' => 1.1,
-                'timeout' => $this->timeout,
-                'max_redirects' => 2,
-                'header' => implode("\r\n", $headers),
-                'content' => json_encode($payload),
-                'ignore_errors' => true,
-            ),
-            "ssl" => array(
-                "verify_peer" => $this->ssl_verify_peer,
-                "verify_peer_name" => $this->ssl_verify_peer,
+        return stream_context_create(
+            array(
+                'http' => array(
+                    'method' => 'POST',
+                    'protocol_version' => 1.1,
+                    'timeout' => $this->timeout,
+                    'max_redirects' => 2,
+                    'header' => implode("\r\n", $headers),
+                    'content' => json_encode($payload),
+                    'ignore_errors' => true,
+                ),
+                "ssl" => array(
+                    "verify_peer" => $this->ssl_verify_peer,
+                    "verify_peer_name" => $this->ssl_verify_peer,
+                )
             )
-        ));
+        );
     }
 
     /**
      * Return true if we have a batch response
      *
      * @access public
-     * @param  array    $payload
+     * @param array $payload
      * @return boolean
      */
     private function isBatchResponse(array $payload)
@@ -380,7 +384,7 @@ class Client
      * Get a RPC call result
      *
      * @access private
-     * @param  array    $payload
+     * @param array $payload
      * @return mixed
      */
     private function getResult(array $payload)
