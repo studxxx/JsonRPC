@@ -95,14 +95,14 @@ class ClientTest extends TestCase
     {
         $this->expectException(AccessDeniedException::class);
         $client = new Client('http://localhost/');
-        $client->handleHttpErrors(array('HTTP/1.0 301 Moved Permantenly', 'Connection: close', 'HTTP/1.1 403 Forbidden'));
+        $client->handleHttpErrors(array('HTTP/1.0 301 Moved Permanently', 'Connection: close', 'HTTP/1.1 403 Forbidden'));
     }
 
     public function testAccessNotAllowedError(): void
     {
         $this->expectException(AccessDeniedException::class);
         $client = new Client('http://localhost/');
-        $client->handleHttpErrors(array('HTTP/1.0 301 Moved Permantenly', 'Connection: close', 'HTTP/1.0 401 Unauthorized'));
+        $client->handleHttpErrors(array('HTTP/1.0 301 Moved Permanently', 'Connection: close', 'HTTP/1.0 401 Unauthorized'));
     }
 
     public function testPrepareRequest(): void

@@ -274,4 +274,22 @@ class ServerProtocolTest extends TestCase
 
         $this->assertEquals('', $server->execute());
     }
+
+    /**
+     * @throws ResponseEncodingFailure
+     */
+    public function testCustomException(): void
+    {
+        $server = new Server('{"jsonrpc": "2.0", "method": "divide", "params": [42, 0], "id": 1}');
+        $server->attachException(MyException::class);
+
+        $server->register('divide', static function ($p1, $p2) {
+            if ($p2 === 0) {
+                throw new MyException('You cannot divide by zero!', -32603);
+            }
+            return $p1/$p2;
+        });
+
+        $this->assertEquals('{"jsonrpc":"2.0","id":1,"error":{"code":-32603,"message":"You cannot divide by zero!"}}', $server->execute());
+    }
 }

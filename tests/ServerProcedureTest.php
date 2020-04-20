@@ -19,6 +19,8 @@ class B
     }
 }
 
+class MyException extends RuntimeException {}
+
 class ServerProcedureTest extends TestCase
 {
     /**
@@ -162,5 +164,22 @@ class ServerProcedureTest extends TestCase
         $this->expectException(JsonRPC\ResponseEncodingFailure::class);
         $server = new Server;
         $server->getResponse(array(pack('H*', 'c32e')), ['id'=>1]);
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testAllowHosts(): void
+    {
+        $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+
+        $server = new Server();
+        $server->allowHosts(['192.168.0.1', '127.0.0.1']);
+
+        $server->register('sum', static function ($p1, $p2) {
+            return $p1 + $p2;
+        });
+
+        $this->assertEquals(2, $server->executeProcedure('sum', [4, -2]));
     }
 }

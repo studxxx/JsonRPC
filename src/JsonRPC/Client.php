@@ -172,7 +172,7 @@ class Client
      * @throws ConnectionFailureException
      * @throws ResponseException
      */
-    public function execute($procedure, array $params = array())
+    public function execute($procedure, array $params = [])
     {
         if ($this->is_batch) {
             $this->batch[] = $this->prepareRequest($procedure, $params);
@@ -191,7 +191,7 @@ class Client
      * @param array $params Procedure arguments
      * @return array
      */
-    public function prepareRequest($procedure, array $params = array()): array
+    public function prepareRequest($procedure, array $params = []): array
     {
         $payload = [
             'jsonrpc' => '2.0',
@@ -274,8 +274,8 @@ class Client
 
         foreach ($headers as $header) {
             foreach ($exceptions as $code => $exception) {
-                if (strpos($header, 'HTTP/1.0 ' . $code) !== false || strpos($header, 'HTTP/1.1 ' . $code) !== false) {
-                    throw new $exception('Response: ' . $header);
+                if (strpos($header, "HTTP/1.0 $code") !== false || strpos($header, "HTTP/1.1 $code") !== false) {
+                    throw new $exception("Response: $header");
                 }
             }
         }
