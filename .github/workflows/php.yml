@@ -2,7 +2,7 @@ name: PHP Composer
 
 on:
   push:
-    branches: [ master, feature/add-github-workflow ]
+    branches: [ master ]
   pull_request:
     branches: [ master ]
 
