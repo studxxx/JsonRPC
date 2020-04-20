@@ -1,10 +1,11 @@
 <?php
 
 use JsonRPC\Server;
+use PHPUnit\Framework\TestCase;
 
 class A
 {
-    public function getAll($p1, $p2, $p3 = 4)
+    public function getAll($p1, $p2, $p3 = 4): int
     {
         return $p1 + $p2 + $p3;
     }
@@ -12,137 +13,173 @@ class A
 
 class B
 {
-    public function getAll($p1)
+    public function getAll($p1): int
     {
         return $p1 + 2;
     }
 }
 
-class ServerProcedureTest extends PHPUnit_Framework_TestCase
+class MyException extends RuntimeException {}
+
+class ServerProcedureTest extends TestCase
 {
     /**
-     * @expectedException BadFunctionCallException
+     * @throws ReflectionException
      */
-    public function testProcedureNotFound()
+    public function testProcedureNotFound(): void
     {
+        $this->expectException(BadFunctionCallException::class);
         $server = new Server;
         $server->executeProcedure('a');
     }
 
     /**
-     * @expectedException BadFunctionCallException
+     * @throws ReflectionException
      */
-    public function testCallbackNotFound()
+    public function testCallbackNotFound(): void
     {
+        $this->expectException(BadFunctionCallException::class);
         $server = new Server;
-        $server->register('b', function() {});
+        $server->register('b', static function() {});
         $server->executeProcedure('a');
     }
 
     /**
-     * @expectedException BadFunctionCallException
+     * @throws ReflectionException
      */
-    public function testClassNotFound()
+    public function testClassNotFound(): void
     {
+        $this->expectException(BadFunctionCallException::class);
         $server = new Server;
         $server->bind('getAllTasks', 'c', 'getAll');
         $server->executeProcedure('getAllTasks');
     }
 
     /**
-     * @expectedException BadFunctionCallException
+     * @throws ReflectionException
      */
-    public function testMethodNotFound()
+    public function testMethodNotFound(): void
     {
+        $this->expectException(BadFunctionCallException::class);
         $server = new Server;
         $server->bind('getAllTasks', 'A', 'getNothing');
         $server->executeProcedure('getAllTasks');
     }
 
-    public function testIsPositionalArguments()
+    public function testIsPositionalArguments(): void
     {
         $server = new Server;
         $this->assertFalse($server->isPositionalArguments(
-            array('a' => 'b', 'c' => 'd'),
-            array('a' => 'b', 'c' => 'd')
+            ['a' => 'b', 'c' => 'd'],
+            ['a' => 'b', 'c' => 'd']
         ));
 
         $server = new Server;
         $this->assertTrue($server->isPositionalArguments(
-            array('a', 'b', 'c'),
-            array('a' => 'b', 'c' => 'd')
+            ['a', 'b', 'c'],
+            ['a' => 'b', 'c' => 'd']
         ));
     }
 
-    public function testBindNamedArguments()
+    /**
+     * @throws ReflectionException
+     */
+    public function testBindNamedArguments(): void
     {
         $server = new Server;
         $server->bind('getAllA', 'A', 'getAll');
         $server->bind('getAllB', 'B', 'getAll');
         $server->bind('getAllC', new B, 'getAll');
-        $this->assertEquals(6, $server->executeProcedure('getAllA', array('p2' => 4, 'p1' => -2)));
-        $this->assertEquals(10, $server->executeProcedure('getAllA', array('p2' => 4, 'p3' => 8, 'p1' => -2)));
-        $this->assertEquals(6, $server->executeProcedure('getAllB', array('p1' => 4)));
-        $this->assertEquals(5, $server->executeProcedure('getAllC', array('p1' => 3)));
+        $this->assertEquals(6, $server->executeProcedure('getAllA', ['p2' => 4, 'p1' => -2]));
+        $this->assertEquals(10, $server->executeProcedure('getAllA', ['p2' => 4, 'p3' => 8, 'p1' => -2]));
+        $this->assertEquals(6, $server->executeProcedure('getAllB', ['p1' => 4]));
+        $this->assertEquals(5, $server->executeProcedure('getAllC', ['p1' => 3]));
     }
 
-    public function testBindPositionalArguments()
+    /**
+     * @throws ReflectionException
+     */
+    public function testBindPositionalArguments(): void
     {
         $server = new Server;
         $server->bind('getAllA', 'A', 'getAll');
         $server->bind('getAllB', 'B', 'getAll');
-        $this->assertEquals(6, $server->executeProcedure('getAllA', array(4, -2)));
-        $this->assertEquals(2, $server->executeProcedure('getAllA', array(4, 0, -2)));
-        $this->assertEquals(4, $server->executeProcedure('getAllB', array(2)));
-    }
-
-    public function testRegisterNamedArguments()
-    {
-        $server = new Server;
-        $server->register('getAllA', function($p1, $p2, $p3 = 4) {
-            return $p1 + $p2 + $p3;
-        });
-
-        $this->assertEquals(6, $server->executeProcedure('getAllA', array('p2' => 4, 'p1' => -2)));
-        $this->assertEquals(10, $server->executeProcedure('getAllA', array('p2' => 4, 'p3' => 8, 'p1' => -2)));
-    }
-
-    public function testRegisterPositionalArguments()
-    {
-        $server = new Server;
-        $server->register('getAllA', function($p1, $p2, $p3 = 4) {
-            return $p1 + $p2 + $p3;
-        });
-
-        $this->assertEquals(6, $server->executeProcedure('getAllA', array(4, -2)));
-        $this->assertEquals(2, $server->executeProcedure('getAllA', array(4, 0, -2)));
+        $this->assertEquals(6, $server->executeProcedure('getAllA', [4, -2]));
+        $this->assertEquals(2, $server->executeProcedure('getAllA', [4, 0, -2]));
+        $this->assertEquals(4, $server->executeProcedure('getAllB', [2]));
     }
 
     /**
-     * @expectedException InvalidArgumentException
+     * @throws ReflectionException
      */
-    public function testTooManyArguments()
+    public function testRegisterNamedArguments(): void
     {
+        $server = new Server;
+        $server->register('getAllA', static function($p1, $p2, $p3 = 4) {
+            return $p1 + $p2 + $p3;
+        });
+
+        $this->assertEquals(6, $server->executeProcedure('getAllA', ['p2' => 4, 'p1' => -2]));
+        $this->assertEquals(10, $server->executeProcedure('getAllA', ['p2' => 4, 'p3' => 8, 'p1' => -2]));
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testRegisterPositionalArguments(): void
+    {
+        $server = new Server;
+        $server->register('getAllA', static function($p1, $p2, $p3 = 4) {
+            return $p1 + $p2 + $p3;
+        });
+
+        $this->assertEquals(6, $server->executeProcedure('getAllA', [4, -2]));
+        $this->assertEquals(2, $server->executeProcedure('getAllA', [4, 0, -2]));
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testTooManyArguments(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
         $server = new Server;
         $server->bind('getAllC', new B, 'getAll');
-        $server->executeProcedure('getAllC', array('p1' => 3, 'p2' => 5));
+        $server->executeProcedure('getAllC', ['p1' => 3, 'p2' => 5]);
     }
 
     /**
-     * @expectedException InvalidArgumentException
+     * @throws ReflectionException
      */
-    public function testNotEnoughArguments()
+    public function testNotEnoughArguments(): void
     {
+        $this->expectException(InvalidArgumentException::class);
         $server = new Server;
         $server->bind('getAllC', new B, 'getAll');
         $server->executeProcedure('getAllC');
     }
-    /**
-     * @expectedException \JsonRPC\ResponseEncodingFailure
-     */
-    public function testInvalidResponse()
+
+    public function testInvalidResponse(): void
     {
+        $this->expectException(JsonRPC\ResponseEncodingFailure::class);
         $server = new Server;
-        $server->getResponse(array(pack("H*", 'c32e')),array('id'=>1));
+        $server->getResponse(array(pack('H*', 'c32e')), ['id'=>1]);
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testAllowHosts(): void
+    {
+        $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+
+        $server = new Server();
+        $server->allowHosts(['192.168.0.1', '127.0.0.1']);
+
+        $server->register('sum', static function ($p1, $p2) {
+            return $p1 + $p2;
+        });
+
+        $this->assertEquals(2, $server->executeProcedure('sum', [4, -2]));
     }
 }

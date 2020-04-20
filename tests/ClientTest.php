@@ -1,10 +1,17 @@
 <?php
 
+use JsonRPC\AccessDeniedException;
 use JsonRPC\Client;
+use JsonRPC\ConnectionFailureException;
+use JsonRPC\ResponseException;
+use PHPUnit\Framework\TestCase;
 
-class ClientTest extends PHPUnit_Framework_TestCase
+class ClientTest extends TestCase
 {
-    public function testParseReponse()
+    /**
+     * @throws ResponseException
+     */
+    public function testParseResponse(): void
     {
         $client = new Client('http://localhost/');
 
@@ -20,87 +27,85 @@ class ClientTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectedException BadFunctionCallException
+     * @throws ResponseException
      */
-    public function testBadProcedure()
+    public function testBadProcedure(): void
     {
+        $this->expectException(BadFunctionCallException::class);
         $client = new Client('http://localhost/');
         $client->parseResponse(json_decode('{"jsonrpc": "2.0", "error": {"code": -32601, "message": "Method not found"}, "id": "1"}', true));
     }
 
     /**
-     * @expectedException InvalidArgumentException
+     * @throws ResponseException
      */
-    public function testInvalidArgs()
+    public function testInvalidArgs(): void
     {
+        $this->expectException(InvalidArgumentException::class);
         $client = new Client('http://localhost/');
         $client->parseResponse(json_decode('{"jsonrpc": "2.0", "error": {"code": -32602, "message": "Invalid params"}, "id": "1"}', true));
     }
 
     /**
-     * @expectedException RuntimeException
+     * @throws ResponseException
      */
-    public function testInvalidRequest()
+    public function testInvalidRequest(): void
     {
+        $this->expectException(RuntimeException::class);
         $client = new Client('http://localhost/');
         $client->parseResponse(json_decode('{"jsonrpc": "2.0", "error": {"code": -32600, "message": "Invalid Request"}, "id": null}', true));
     }
 
     /**
-     * @expectedException RuntimeException
+     * @throws ResponseException
      */
-    public function testParseError()
+    public function testParseError(): void
     {
+        $this->expectException(RuntimeException::class);
         $client = new Client('http://localhost/');
         $client->parseResponse(json_decode('{"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": null}', true));
     }
 
-    /**
-     * @expectedException JsonRPC\ServerErrorException
-     */
-    public function testServerError()
+    public function testServerError(): void
     {
+        $this->expectException(JsonRPC\ServerErrorException::class);
         $client = new Client('http://localhost/');
         $client->handleHttpErrors(array('HTTP/1.0 301 Moved Permantenly', 'Connection: close', 'HTTP/1.1 500 Internal Server Error'));
     }
 
     /**
-     * @expectedException JsonRPC\ConnectionFailureException
+     * @throws ResponseException
+     * @throws ConnectionFailureException
      */
-    public function testBadUrl()
+    public function testBadUrl(): void
     {
+        $this->expectException(ConnectionFailureException::class);
         $client = new Client('http://something_not_found/', 1);
         $client->execute('plop');
     }
 
-    /**
-     * @expectedException JsonRPC\ConnectionFailureException
-     */
-    public function test404()
+    public function test404(): void
     {
+        $this->expectException(ConnectionFailureException::class);
         $client = new Client('http://localhost/');
         $client->handleHttpErrors(array('HTTP/1.1 404 Not Found'));
     }
 
-    /**
-     * @expectedException JsonRPC\AccessDeniedException
-     */
-    public function testAccessForbiddenError()
+    public function testAccessForbiddenError(): void
     {
+        $this->expectException(AccessDeniedException::class);
         $client = new Client('http://localhost/');
-        $client->handleHttpErrors(array('HTTP/1.0 301 Moved Permantenly', 'Connection: close', 'HTTP/1.1 403 Forbidden'));
+        $client->handleHttpErrors(array('HTTP/1.0 301 Moved Permanently', 'Connection: close', 'HTTP/1.1 403 Forbidden'));
     }
 
-    /**
-     * @expectedException JsonRPC\AccessDeniedException
-     */
-    public function testAccessNotAllowedError()
+    public function testAccessNotAllowedError(): void
     {
+        $this->expectException(AccessDeniedException::class);
         $client = new Client('http://localhost/');
-        $client->handleHttpErrors(array('HTTP/1.0 301 Moved Permantenly', 'Connection: close', 'HTTP/1.0 401 Unauthorized'));
+        $client->handleHttpErrors(array('HTTP/1.0 301 Moved Permanently', 'Connection: close', 'HTTP/1.0 401 Unauthorized'));
     }
 
-    public function testPrepareRequest()
+    public function testPrepareRequest(): void
     {
         $client = new Client('http://localhost/');
 
@@ -124,7 +129,11 @@ class ClientTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(array('p1' => 3), $payload['params']);
     }
 
-    public function testBatchRequest()
+    /**
+     * @throws ResponseException
+     * @throws ConnectionFailureException
+     */
+    public function testBatchRequest(): void
     {
         $client = new Client('http://localhost/');
 
@@ -138,7 +147,7 @@ class ClientTest extends PHPUnit_Framework_TestCase
         $batch->execute('foo', array('p1' => 42, 'p3' => 3));
 
         $this->assertNotEmpty($client->batch);
-        $this->assertEquals(3, count($client->batch));
+        $this->assertCount(3, $client->batch);
 
         $this->assertEquals('random', $client->batch[0]['method']);
         $this->assertEquals('add', $client->batch[1]['method']);
