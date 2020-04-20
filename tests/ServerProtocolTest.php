@@ -1,20 +1,25 @@
 <?php
 
+use JsonRPC\ResponseEncodingFailure;
 use JsonRPC\Server;
+use PHPUnit\Framework\TestCase;
 
 class C
 {
-    public function doSomething()
+    public function doSomething(): string
     {
         return 'something';
     }
 }
 
-class ServerProtocolTest extends PHPUnit_Framework_TestCase
+class ServerProtocolTest extends TestCase
 {
-    public function testPositionalParameters()
+    /**
+     * @throws ResponseEncodingFailure
+     */
+    public function testPositionalParameters(): void
     {
-        $subtract = function($minuend, $subtrahend) {
+        $subtract = static function($minuend, $subtrahend) {
             return $minuend - $subtrahend;
         };
 
@@ -35,10 +40,12 @@ class ServerProtocolTest extends PHPUnit_Framework_TestCase
         );
     }
 
-
-    public function testNamedParameters()
+    /**
+     * @throws ResponseEncodingFailure
+     */
+    public function testNamedParameters(): void
     {
-        $subtract = function($minuend, $subtrahend) {
+        $subtract = static function($minuend, $subtrahend) {
             return $minuend - $subtrahend;
         };
 
@@ -59,11 +66,13 @@ class ServerProtocolTest extends PHPUnit_Framework_TestCase
         );
     }
 
-
-    public function testNotification()
+    /**
+     * @throws ResponseEncodingFailure
+     */
+    public function testNotification(): void
     {
-        $update = function($p1, $p2, $p3, $p4, $p5) {};
-        $foobar = function() {};
+        $update = static function($p1, $p2, $p3, $p4, $p5) {};
+        $foobar = static function() {};
 
 
         $server = new Server('{"jsonrpc": "2.0", "method": "update", "params": [1,2,3,4,5]}');
@@ -80,8 +89,10 @@ class ServerProtocolTest extends PHPUnit_Framework_TestCase
         $this->assertEquals('', $server->execute());
     }
 
-
-    public function testNoMethod()
+    /**
+     * @throws ResponseEncodingFailure
+     */
+    public function testNoMethod(): void
     {
         $server = new Server('{"jsonrpc": "2.0", "method": "foobar", "id": "1"}');
 
@@ -91,8 +102,10 @@ class ServerProtocolTest extends PHPUnit_Framework_TestCase
         );
     }
 
-
-    public function testInvalidJson()
+    /**
+     * @throws ResponseEncodingFailure
+     */
+    public function testInvalidJson(): void
     {
         $server = new Server('{"jsonrpc": "2.0", "method": "foobar, "params": "bar", "baz]');
 
@@ -102,8 +115,10 @@ class ServerProtocolTest extends PHPUnit_Framework_TestCase
         );
     }
 
-
-    public function testInvalidRequest()
+    /**
+     * @throws ResponseEncodingFailure
+     */
+    public function testInvalidRequest(): void
     {
         $server = new Server('{"jsonrpc": "2.0", "method": 1, "params": "bar"}');
 
@@ -113,12 +128,15 @@ class ServerProtocolTest extends PHPUnit_Framework_TestCase
         );
     }
 
-    public function testInvalidResponse_MalformedCharacters()
+    /**
+     * @throws ResponseEncodingFailure
+     */
+    public function testInvalidResponse_MalformedCharacters(): void
     {
         $server = new Server('{"jsonrpc": "2.0", "method": "invalidresponse","id": 1}');
 
-        $invalidresponse = function() {
-            return pack("H*" ,'c32e');
+        $invalidresponse = static function() {
+            return pack('H*', 'c32e');
         };
 
         $server->register('invalidresponse', $invalidresponse);
@@ -129,8 +147,10 @@ class ServerProtocolTest extends PHPUnit_Framework_TestCase
         );
     }
 
-
-    public function testBatchInvalidJson()
+    /**
+     * @throws ResponseEncodingFailure
+     */
+    public function testBatchInvalidJson(): void
     {
         $server = new Server('[
           {"jsonrpc": "2.0", "method": "sum", "params": [1,2,4], "id": "1"},
@@ -143,8 +163,10 @@ class ServerProtocolTest extends PHPUnit_Framework_TestCase
         );
     }
 
-
-    public function testBatchEmptyArray()
+    /**
+     * @throws ResponseEncodingFailure
+     */
+    public function testBatchEmptyArray(): void
     {
         $server = new Server('[]');
 
@@ -154,8 +176,10 @@ class ServerProtocolTest extends PHPUnit_Framework_TestCase
         );
     }
 
-
-    public function testBatchNotEmptyButInvalid()
+    /**
+     * @throws ResponseEncodingFailure
+     */
+    public function testBatchNotEmptyButInvalid(): void
     {
         $server = new Server('[1]');
 
@@ -165,8 +189,10 @@ class ServerProtocolTest extends PHPUnit_Framework_TestCase
         );
     }
 
-
-    public function testBatchInvalid()
+    /**
+     * @throws ResponseEncodingFailure
+     */
+    public function testBatchInvalid(): void
     {
         $server = new Server('[1,2,3]');
 
@@ -180,8 +206,10 @@ class ServerProtocolTest extends PHPUnit_Framework_TestCase
         );
     }
 
-
-    public function testBatchOk()
+    /**
+     * @throws ResponseEncodingFailure
+     */
+    public function testBatchOk(): void
     {
         $server = new Server('[
             {"jsonrpc": "2.0", "method": "sum", "params": [1,2,4], "id": "1"},
@@ -194,15 +222,15 @@ class ServerProtocolTest extends PHPUnit_Framework_TestCase
             {"jsonrpc": "2.0", "method": "doStuff", "id": 15}
         ]');
 
-        $server->register('sum', function($a, $b, $c) {
+        $server->register('sum', static function($a, $b, $c) {
             return $a + $b + $c;
         });
 
-        $server->register('subtract', function($minuend, $subtrahend) {
+        $server->register('subtract', static function($minuend, $subtrahend) {
             return $minuend - $subtrahend;
         });
 
-        $server->register('get_data', function() {
+        $server->register('get_data', static function() {
             return array('hello', 5);
         });
 
@@ -226,22 +254,42 @@ class ServerProtocolTest extends PHPUnit_Framework_TestCase
         );
     }
 
-
-    public function testBatchNotifications()
+    /**
+     * @throws ResponseEncodingFailure
+     */
+    public function testBatchNotifications(): void
     {
         $server = new Server('[
             {"jsonrpc": "2.0", "method": "notify_sum", "params": [1,2,4]},
             {"jsonrpc": "2.0", "method": "notify_hello", "params": [7]}
         ]');
 
-        $server->register('notify_sum', function($a, $b, $c) {
+        $server->register('notify_sum', static function($a, $b, $c) {
 
         });
 
-        $server->register('notify_hello', function($id) {
+        $server->register('notify_hello', static function($id) {
 
         });
 
         $this->assertEquals('', $server->execute());
+    }
+
+    /**
+     * @throws ResponseEncodingFailure
+     */
+    public function testCustomException(): void
+    {
+        $server = new Server('{"jsonrpc": "2.0", "method": "divide", "params": [42, 0], "id": 1}');
+        $server->attachException(MyException::class);
+
+        $server->register('divide', static function ($p1, $p2) {
+            if ($p2 === 0) {
+                throw new MyException('You cannot divide by zero!', -32603);
+            }
+            return $p1/$p2;
+        });
+
+        $this->assertEquals('{"jsonrpc":"2.0","id":1,"error":{"code":-32603,"message":"You cannot divide by zero!"}}', $server->execute());
     }
 }

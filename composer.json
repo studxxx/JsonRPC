@@ -1,18 +1,27 @@
 {
-    "name": "fguillot/json-rpc",
+    "name": "studxxx/json-rpc",
     "description": "Simple Json-RPC client/server library that just works",
-    "homepage": "https://github.com/fguillot/JsonRPC",
+    "homepage": "https://github.com/studxxx/JsonRPC",
     "type": "library",
     "license": "MIT",
     "authors": [
         {
             "name": "Frédéric Guillot"
+        },
+        {
+            "name": "Valentyn Studynytskyi"
         }
     ],
     "require": {
-        "php": ">=5.3.4"
+        "php": ">=7.1",
+        "ext-json": "*"
     },
     "autoload": {
-        "psr-0": {"JsonRPC": "src/"}
+        "psr-4": {
+            "JsonRPC\\": "src/JsonRPC/"
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.0"
     }
 }
