@@ -73,7 +73,7 @@ class Client
      * @var array
      */
     private $headers = [
-        'User-Agent: JSON-RPC PHP Client <https://github.com/fguillot/JsonRPC>',
+        'User-Agent: JSON-RPC PHP Client <https://github.com/studxxx/JsonRPC>',
         'Content-Type: application/json',
         'Accept: application/json',
         'Connection: close',
